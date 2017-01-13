@@ -7,19 +7,20 @@ setup(
     name='atmsrv_db',
     version=atmsrv_db.__version__,
     packages=find_packages(),
-    long_description=open(join(dirname(__file__), 'README.txt')).read(),
+    long_description=open(join(dirname(__file__), 'README.rst')).read(),
 
-    # install_requires=[
-    #     'watchdog',
-    #     'progressbar2',
-    #     'PyQt5',
-    # ],
+    install_requires=[
+        'cx_Oracle'
+        # 'watchdog',
+        # 'progressbar2',
+        # 'PyQt5',
+    ],
 
-    # entry_points={
-    #     'console_scripts': [
-    #         'atm-start = atmsrv_db.cheque_replace:count_by_month',
-    #     ]
-    # },
+    entry_points={
+        'console_scripts': [
+            'atm = atmsrv_db.main',
+        ]
+    },
     # include_package_data=True,
     test_suite='tests',
 )

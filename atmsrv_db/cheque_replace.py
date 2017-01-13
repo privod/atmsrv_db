@@ -54,9 +54,6 @@ def where_city(city_list):
     if len(city_list) > 0:
         return "and aa.city in {}".format(oracle_str_array(city_list))
 
-# db = Orcl()
-db = Orcl(uri="prom_ust_atm/121@fast")
-
 
 def get_next_month(date):
     try:
@@ -75,6 +72,8 @@ def find(rpt, date_end, std_descr):
 
 
 def count_by_month(moth_beg, moth_end, producer_list=[], city_list=[]):
+    db = Orcl()
+    # db = Orcl(uri="prom_ust_atm/121@fast")
 
     rpt = db.exec_in_dict(get_sqltext(producer_list, city_list), {
         'dt_beg': to_gpdatetime(moth_beg),
