@@ -3,6 +3,7 @@
 
 import cx_Oracle
 
+
 class Orcl:
   def __init__(self, uri = "privod_ust_atm_new/121@orcl"):
     try:
@@ -14,7 +15,7 @@ class Orcl:
 
     def __del__(self):
       self.conn.close()
-    
+
   def sql_exec(self, sql, params):
     try:
       if params:

@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from atmsrv_db.orcl import Orcl
+from atmsrv_db.gptyp import from_gpdatetime
 
 sqltext = """
 select om.A_ORDER_NUMBER, m.a_mail_ref, m.A_DATE_INS, m.A_DATE_SENT, m.A_SUBJECT, m.A_RECIPIENTS, mb.A_PART_NUM, mb.A_BODY_PART  from  r_send_mail m
@@ -33,7 +34,8 @@ def ncr_last_by_order(number_list):
         rpt_last = rpt[-1]
 
         rpt_text = "\t".join([
-            datetime.strptime(str(rpt_last['a_date_sent']), '%Y%m%d%H%M%S').strftime('%d.%m.%Y %H:%M:%S'),
+            # datetime.strptime(str(rpt_last['a_date_sent']), '%Y%m%d%H%M%S').strftime('%d.%m.%Y %H:%M:%S'),
+            from_gpdatetime(rpt_last['a_date_sent']).strftime('%d.%m.%Y %H:%M:%S'),
             rpt_last['a_subject'],
             '"{}"'.format(rpt_last['a_body_part'].strip()),
             rpt_last['a_order_number'],

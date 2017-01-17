@@ -10,7 +10,9 @@ setup(
     long_description=open(join(dirname(__file__), 'README.rst')).read(),
 
     install_requires=[
-        'cx_Oracle'
+        'cx_Oracle',
+        'xlwt',
+        'rels',
         # 'watchdog',
         # 'progressbar2',
         # 'PyQt5',
@@ -18,7 +20,7 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'atm = atmsrv_db.main',
+            'actual_ncr = atmsrv_db.order_reports:actual_ncr',
         ]
     },
     # include_package_data=True,
