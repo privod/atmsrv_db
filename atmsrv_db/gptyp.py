@@ -19,10 +19,12 @@ def from_gpdatetime(val):
 def from_gpdate(val):
     return datetime.strptime(str(val), _gpdate_format)
 
+
 class Enum(Relation):
     name = Column(primary=True)
     value = Column(external=True)
     title = Column()
+
 
 class OrderState(Enum):
     records = (
