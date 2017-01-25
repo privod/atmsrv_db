@@ -2,7 +2,9 @@ import os.path
 from datetime import datetime
 from email import encoders
 from email.mime.base import MIMEBase
+from email.mime.message import MIMEMessage
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from smtplib import SMTP
 
 import xlwt as xlwt
@@ -53,9 +55,9 @@ class FieldInfo(object):
 #         self.info = info
 
 class Field(object):
-    def __init__(self, title, val=None):
+    def __init__(self, title):
         # self.inst = {}
-        self.val = val
+        self.val = None
         self.title = title
 
     # def __get__(self, obj, type):
@@ -78,26 +80,45 @@ class _DomainMetaclass(type):
     #         pass
 
     def __init__(cls, name, bases, attributes):
+        super().__init__(name, bases, attributes)
+        print(cls)
+        print(name)
+        # print(attributes)
+        # print(attributes.get('fields'))
+        for field in attributes.get('fields', []):
+            print(field)
 
-        for field in attributes.get('fields'):
-            pass
 
-        return super(_DomainMetaclass, cls).__new__(cls, name, bases, )
+class Model(object, metaclass=_DomainMetaclass):
+# class Model(object):
+
+    def __init__(self):
+        # print(self.__class__)
+        # print(self.__class__.__mro__)
+        for cls in self.__class__.__mro__:
+            for name, title in cls.__dict__.get('fields', []):
+                # print(name, title)
+
+                self.__dict__[name] = None
+                self.__class__.__dict__['{}_title'.format(name)] = title
+
+        # print(dir(self))
+        # print(getattr(self, 'fields'))
+        pass
 
 
-class Domain(object):
-    # __metaclass__ = _DomainMetaclass
+class Domain(Model):
     # ref_info = FieldInfo('Индекс')
     fields = [
         ('ref', 'Индекс'),
     ]
+    #
+    # def field_cre(self, fields):
+    #     for field in fields:
+    #         self.__dict__[field[0]] = Field(field[1])
 
-    def field_cre(self, fields):
-        for field in fields:
-            self.__dict__[field[0]] = Field(field[1])
-
-    def __init__(self):
-        self.field_cre()
+    # def __init__(self):
+    #     self.field_cre()
         # self.ref = Field(self.__class__.ref_info, ref)
 
 
@@ -106,11 +127,12 @@ class Mail(Domain):
     # subject = Field('Тема письма')
     # body = Field('Текст письма')
 
-    def __init__(self,ref,  date_sent, subject, body):
-        super().__init__(ref)
-        self.date_sent = date_sent
-        self.subject = subject
-        self.body = body
+    # def __init__(self,ref,  date_sent, subject, body):
+    #     super().__init__(ref)
+    #     self.date_sent = date_sent
+    #     self.subject = subject
+    #     self.body = body
+    pass
 
 
 class Order(Domain):
@@ -118,11 +140,14 @@ class Order(Domain):
     # state = Field('Статус')
     # mails = Field()
 
-    def __init__(self, ref, number, state):
-        super().__init__(ref)
-        self.number = number
-        self.state = state
+    fields = [
+        ('number', 'Номер заявки'),
+    ]
 
+    # def __init__(self, ref, number, state):
+    #     super().__init__()
+    #     self.number = number
+    #     self.state = state
 
 
 def actual_ncr():
@@ -135,11 +160,6 @@ def actual_ncr():
     # for order in order_list:
     #     mail_list = db.exec_in_dict(sqltext_mail, {'order_number': order['a_number']})
     #     order['mail_list'] = sorted(mail_list, key=lambda send: send['a_date_sent'])
-
-    order = Order(100, 'W11111', OrderState(0))
-
-    o = OrderState(3)
-    o.title
 
     db.sql_exec(sqltext_order_list, {})
     # order_list = db.fetchall()
@@ -215,28 +235,52 @@ def actual_ncr():
 
 def test_objects():
 
-    state = OrderState(3)
-    print(state.title)
+    # order = Order(100, 'W11111', OrderState(0))
+    O = Order
+    order = Order()
+    order.ref = 100
+    order.number = 'w32332'
 
-    order = Order(100, 'W11111', OrderState(0))
-    # order = Order(100)
-    order.ref.val = 200
-    order.ref.val = 300
-    print(order.ref.val)
-    print(order.ref.info.title)
-    print(order.ref)
-    order.number = 'W22222'
-    order.state = OrderState(1)
-    print(order.number)
+    print(order.__dict__)
 
-    order2 = Order(500, 'W22222', OrderState(1))
-    # order2 = Order(500)
-    order2.number = 'W1111'
-    order2.state = OrderState(0)
+    # order.ref.val = 200
+    # order.ref.val = 300
+    # print(order.ref.val)
+    # print(order.ref.info.title)
+    # print(order.ref)
+    # order.number = 'W22222'
+    # order.state = OrderState(1)
+    # print(order.number)
+    #
+    # order2 = Order(500, 'W22222', OrderState(1))
+    # # order2 = Order(500)
+    # order2.number = 'W1111'
+    # order2.state = OrderState(0)
+    #
+    # print(order.number)
+    # print(order.ref)
+    #
+    # print(order2.number)
+    # print(order2.ref)
 
-    print(order.number)
-    print(order.ref)
+def sent_mail():
+    print('Отправка письма...')
+    msg = MIMEText('Тестовое письмо')
+    msg['Subject'] = 'Тестовое письмо'
+    msg['From'] = 'sd-exch1 <sd-exch1@sberbank.ru>'
+    msg['To'] = 'bespalov@diasoft-service.ru'
+    # msg['cc'] = ', '.join(addr_cc)
 
-    print(order2.number)
-    print(order2.ref)
+    # with open(path, 'rb') as fp:
+    #     part = MIMEBase('application', 'vnd.ms-excel')
+    #     part.set_payload(fp.read())
+    #     encoders.encode_base64(part)
+    # part.add_header('Content-Disposition', 'attachment', filename=filename)
+    # msg.attach(part)
 
+    with SMTP(host=_host, port=_port) as smtp:
+        smtp.starttls()
+        smtp.login(_user, _pass)
+        smtp.sendmail(addr_from, addr_to + addr_cc, msg.as_string())
+
+    print('Письмо отправлено.')
