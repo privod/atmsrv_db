@@ -3,7 +3,7 @@ from datetime import datetime
 from atmsrv_db.orcl import Orcl
 
 from atmsrv_db.send_mail import ncr_last_by_order
-from atmsrv_db.order_reports import actual_ncr, test_objects, sent_mail
+from atmsrv_db.order_reports import actual_ncr, test_objects, sent_mail, table_cre
 from atmsrv_db.gptyp import OrderState
 
 # sqltext = "select ref, city, region from r_city"
@@ -15,9 +15,12 @@ from atmsrv_db.gptyp import OrderState
 
 # sent_mail()
 
-test_objects()
+# test_objects()
 
-# actual_ncr()
+orders = actual_ncr()
+print(orders)
+
+table_cre(None, orders)
 
 # number_list = [
 #     # 'W701165456', 'W612315724', 'W612285187',  'W701175112', 'W701185283', 'W701166406', 'W701136126', 'W701105142',
