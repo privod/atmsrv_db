@@ -7,6 +7,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from smtplib import SMTP
 
+import timestamp as timestamp
 import xlwt
 from xlwt import Worksheet
 from xlwt.Workbook import Workbook
@@ -16,7 +17,7 @@ from atmsrv_db.gptyp import from_gpdatetime, OrderState
 from atmsrv_db.orcl import Orcl
 
 sqltext_mail = """
-select m.a_mail_ref, m.a_date_sent, m.a_subject, mb.a_body_part from r_send_mail m
+select m.a_date_sent, m.a_subject, mb.a_body_part from r_send_mail m
   inner join r_order_mail om on m.a_mail_ref = om.a_mail_ref
   inner join r_mail_body_part mb on mb.a_mail_ref = m.a_mail_ref
 where 1 = 1
@@ -38,6 +39,17 @@ order by o.DATE_REG desc
 
 timestamp_format = '%d.%m.%Y %H:%M'
 
+header = [
+    ('Номер заявки', 4000),
+    ('Статус', 4500),
+    ('Дата отправки письма', 6000),
+    ('Заголовок письма', 10000),
+    ('Текст письма', 15000),
+]
+
+row_beg = 0
+col_beg = 0
+
 addr_from = 'supsoft@diasoft-service.ru'
 addr_to = ['bespalov@diasoft-service.ru']
 addr_cc = ['bespalov@diasoft-service.ru']
@@ -46,17 +58,26 @@ _port = 587
 _user = 'testorders@diasoft-service.ru'
 _pass = 'UiGmo0DhTu8h'
 
-order_header = [
-    'Индекс заявки',
-    'Номер заявки',
-    'Статус',
-    'Дата отправки письма',
-    'Заголовок письма',
-    'Текст письма',
-]
+# order_header = [
+#     'Индекс заявки',
+#     'Номер заявки',
+#     'Статус',
+#     'Дата отправки письма',
+#     'Заголовок письма',
+#     'Текст письма',
+# ]
 
 
 def actual_ncr():
+
+    order = get_actual_ncr_orders()
+
+    path, filename = order_report(order)
+
+    send_report(path, filename)
+
+
+def get_actual_ncr_orders():
     db = Orcl()
     # db = Orcl(uri="prom_ust_atm/121@fast")
 
@@ -70,10 +91,14 @@ def actual_ncr():
         state = OrderState(state_int)
 
         db.sql_exec(sqltext_mail, {'ref': ref})
-        mails = [mail for mail in db.fetchall()]
+        mails = [[from_gpdatetime(date_sent), subject, body.strip()] for date_sent, subject, body in db.fetchall()]
         mails.sort(key=lambda mail: mail[1])            # Сортировка по дате получения письма
 
-        orders.append([ref, number, state, mails])
+        order = [number, state.title]
+        if len(mails) > 0:
+            order.extend(mails[0])
+
+        orders.append(order)
 
     return orders
 
@@ -154,107 +179,114 @@ def actual_ncr():
 #             sheet.write(row, col, title, style)
 #             sheet.col(col).width = width
 
+# titles = ['Индекс заявки', 'Номер заявки', 'Статус', 'Дата отправки письма', 'Заголовок письма', 'Текст письма']
+# width_list = [4000, 4500, 7000, 10000, 15000]
 
-titles = ['Индекс заявки', 'Номер заявки', 'Статус', 'Дата отправки письма', 'Заголовок письма', 'Текст письма']
-width_list = [4000, 4500, 7000, 10000, 15000]
 
+def order_report(cells):
 
-def order_report():
     print('Формирование отчета...')
     timestamp = datetime.now()
 
     wb = xlwt.Workbook()
     sheet = wb.add_sheet('Orders')
 
-    stype_title = reporter.StyleTitle()
-    reporter.row_write(sheet, 0, 0, titles, stype_title)
+    reporter.header_write(sheet, row_beg, col_beg, header)
 
-
-
-def table(sheet, header):
-
-    for i, order in list(enumerate(order_list, 1)):
-
-        sheet.write(i, 0, order['a_number'])
-        sheet.write(i, 1, OrderState(order['slm_state']).title)
-        mail_list = order['mail_list']
-        if len(mail_list) > 0:
-            last_mail = mail_list[-1]
-            sheet.write(i, 2, from_gpdatetime(last_mail['a_date_sent']), style_date)
-            sheet.write(i, 3, last_mail['a_subject'])
-            sheet.write(i, 4, last_mail['a_body_part'].strip())
+    for row, row_cells in enumerate(cells, row_beg + 1):
+        reporter.row_write(sheet, row, col_beg, row_cells)
 
     filename = 'orders_{}.xls'.format(timestamp.strftime('%y%m%d-%H'))
     path = os.path.join('data', filename)
     wb.save(path)
 
-    # print('Отправка отчета...')
-    # msg = MIMEMultipart('mixed')
-    # msg['Subject'] = 'Актуальные заявки {}'.format(timestamp.strftime(timestamp_format))
-    # msg['From'] = addr_from
-    # msg['To'] = ', '.join(addr_to)
-    # msg['cc'] = ', '.join(addr_cc)
+    return path, filename
+
+
+def send_report(path, filename):
+
+    # for i, order in list(enumerate(order_list, 1)):
     #
-    # with open(path, 'rb') as fp:
-    #     part = MIMEBase('application', 'vnd.ms-excel')
-    #     part.set_payload(fp.read())
-    #     encoders.encode_base64(part)
-    # part.add_header('Content-Disposition', 'attachment', filename=filename)
-    # msg.attach(part)
+    #     sheet.write(i, 0, order['a_number'])
+    #     sheet.write(i, 1, OrderState(order['slm_state']).title)
+    #     mail_list = order['mail_list']
+    #     if len(mail_list) > 0:
+    #         last_mail = mail_list[-1]
+    #         sheet.write(i, 2, from_gpdatetime(last_mail['a_date_sent']), style_date)
+    #         sheet.write(i, 3, last_mail['a_subject'])
+    #         sheet.write(i, 4, last_mail['a_body_part'].strip())
     #
-    # with SMTP(host=_host, port=_port) as smtp:
-    #     smtp.starttls()
-    #     smtp.login(_user, _pass)
-    #     smtp.sendmail(addr_from, addr_to + addr_cc, msg.as_string())
-    #
-    # print('Отчет отправлен.')
+    # filename = 'orders_{}.xls'.format(timestamp.strftime('%y%m%d-%H'))
+    # path = os.path.join('data', filename)
+    # wb.save(path)
 
+    print('Отправка отчета...')
+    msg = MIMEMultipart('mixed')
+    msg['Subject'] = 'Актуальные заявки {}'.format(timestamp.strftime(timestamp_format))
+    msg['From'] = addr_from
+    msg['To'] = ', '.join(addr_to)
+    msg['cc'] = ', '.join(addr_cc)
 
-def test_objects():
-
-    order = Order(100, 'W11111', OrderState(0))
-    # order = Order()
-
-    print([field.title for field in order.__dict__.values()])
-
-    # order.ref.val = 200
-    # order.ref.val = 300
-    # print(order.ref.val)
-    # print(order.ref.title)
-    # print(order.ref)
-    # order.number.val = 'W22222'
-    # order.state.val = OrderState(1)
-    # print(order.number)
-    #
-    # order2 = Order(500, 'W22222', OrderState(1))
-    # # order2 = Order(500)
-    # order2.number.val = 'W1111'
-    # order2.state = OrderState(0)
-    #
-    # print(order.number.val)
-    # print(order.ref.val)
-    #
-    # print(order2.number.val)
-    # print(order2.ref.val)
-
-def sent_mail():
-    print('Отправка письма...')
-    msg = MIMEText('Тестовое письмо')
-    msg['Subject'] = 'Тестовое письмо'
-    msg['From'] = 'sd-exch1 <sd-exch1@sberbank.ru>'
-    msg['To'] = 'bespalov@diasoft-service.ru'
-    # msg['cc'] = ', '.join(addr_cc)
-
-    # with open(path, 'rb') as fp:
-    #     part = MIMEBase('application', 'vnd.ms-excel')
-    #     part.set_payload(fp.read())
-    #     encoders.encode_base64(part)
-    # part.add_header('Content-Disposition', 'attachment', filename=filename)
-    # msg.attach(part)
+    with open(path, 'rb') as fp:
+        part = MIMEBase('application', 'vnd.ms-excel')
+        part.set_payload(fp.read())
+        encoders.encode_base64(part)
+    part.add_header('Content-Disposition', 'attachment', filename=filename)
+    msg.attach(part)
 
     with SMTP(host=_host, port=_port) as smtp:
         smtp.starttls()
         smtp.login(_user, _pass)
         smtp.sendmail(addr_from, addr_to + addr_cc, msg.as_string())
 
-    print('Письмо отправлено.')
+    print('Отчет отправлен.')
+
+
+# def test_objects():
+#
+#     # order = Order(100, 'W11111', OrderState(0))
+#     # order = Order()
+#
+#     # print([field.title for field in order.__dict__.values()])
+#
+#     # order.ref.val = 200
+#     # order.ref.val = 300
+#     # print(order.ref.val)
+#     # print(order.ref.title)
+#     # print(order.ref)
+#     # order.number.val = 'W22222'
+#     # order.state.val = OrderState(1)
+#     # print(order.number)
+#     #
+#     # order2 = Order(500, 'W22222', OrderState(1))
+#     # # order2 = Order(500)
+#     # order2.number.val = 'W1111'
+#     # order2.state = OrderState(0)
+#     #
+#     # print(order.number.val)
+#     # print(order.ref.val)
+#     #
+#     # print(order2.number.val)
+#     # print(order2.ref.val)
+
+# def sent_mail():
+#     print('Отправка письма...')
+#     msg = MIMEText('Тестовое письмо')
+#     msg['Subject'] = 'Тестовое письмо'
+#     msg['From'] = 'sd-exch1 <sd-exch1@sberbank.ru>'
+#     msg['To'] = 'bespalov@diasoft-service.ru'
+#     # msg['cc'] = ', '.join(addr_cc)
+#
+#     # with open(path, 'rb') as fp:
+#     #     part = MIMEBase('application', 'vnd.ms-excel')
+#     #     part.set_payload(fp.read())
+#     #     encoders.encode_base64(part)
+#     # part.add_header('Content-Disposition', 'attachment', filename=filename)
+#     # msg.attach(part)
+#
+#     with SMTP(host=_host, port=_port) as smtp:
+#         smtp.starttls()
+#         smtp.login(_user, _pass)
+#         smtp.sendmail(addr_from, addr_to + addr_cc, msg.as_string())
+#
+#     print('Письмо отправлено.')
