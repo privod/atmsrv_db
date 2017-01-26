@@ -9,10 +9,10 @@ from smtplib import SMTP
 
 import xlwt
 
-import reporter
+import atmsrv_db.reporter as reporter
 from atmsrv_db.gptyp import from_gpdatetime, OrderState
 from atmsrv_db.orcl import Orcl
-from conf import Conf
+from atmsrv_db.conf import Conf
 
 sqltext_mail = """
 select m.a_date_sent, m.a_subject, mb.a_body_part from r_send_mail m
