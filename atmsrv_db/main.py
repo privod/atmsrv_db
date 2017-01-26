@@ -3,7 +3,7 @@ from datetime import datetime
 from atmsrv_db.orcl import Orcl
 
 from atmsrv_db.send_mail import ncr_last_by_order
-from atmsrv_db.order_reports import actual_ncr, sent_mail
+from atmsrv_db.order_reports import actual_ncr
 from atmsrv_db.gptyp import OrderState
 
 # sqltext = "select ref, city, region from r_city"

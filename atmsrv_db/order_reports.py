@@ -1,20 +1,18 @@
 import os.path
 from datetime import datetime
 from email import encoders
+from email._header_value_parser import ContentType
 from email.mime.base import MIMEBase
-from email.mime.message import MIMEMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from smtplib import SMTP
 
-import timestamp as timestamp
 import xlwt
-from xlwt import Worksheet
-from xlwt.Workbook import Workbook
 
 import reporter
 from atmsrv_db.gptyp import from_gpdatetime, OrderState
 from atmsrv_db.orcl import Orcl
+from conf import Conf
 
 sqltext_mail = """
 select m.a_date_sent, m.a_subject, mb.a_body_part from r_send_mail m
@@ -50,13 +48,13 @@ header = [
 row_beg = 0
 col_beg = 0
 
-addr_from = 'supsoft@diasoft-service.ru'
-addr_to = ['bespalov@diasoft-service.ru']
-addr_cc = ['bespalov@diasoft-service.ru']
-_host = "mail.diasoft-service.ru"
-_port = 587
-_user = 'testorders@diasoft-service.ru'
-_pass = 'UiGmo0DhTu8h'
+# addr_from = 'supsoft@diasoft-service.ru'
+# addr_to = ['bespalov@diasoft-service.ru']
+# addr_cc = ['bespalov@diasoft-service.ru']
+# _host = "mail.diasoft-service.ru"
+# _port = 587
+# _user = 'testorders@diasoft-service.ru'
+# _pass = 'UiGmo0DhTu8h'
 
 # order_header = [
 #     'Индекс заявки',
@@ -72,9 +70,10 @@ def actual_ncr():
 
     order = get_actual_ncr_orders()
 
-    path, filename = order_report(order)
+    timestamp = datetime.now()
+    path, filename = order_report(order, timestamp)
 
-    send_report(path, filename)
+    send_report(path, filename, timestamp)
 
 
 def get_actual_ncr_orders():
@@ -183,10 +182,9 @@ def get_actual_ncr_orders():
 # width_list = [4000, 4500, 7000, 10000, 15000]
 
 
-def order_report(cells):
+def order_report(cells, timestamp):
 
     print('Формирование отчета...')
-    timestamp = datetime.now()
 
     wb = xlwt.Workbook()
     sheet = wb.add_sheet('Orders')
@@ -202,8 +200,10 @@ def order_report(cells):
 
     return path, filename
 
+class SendReporConf(Conf):
+    _file_name = 'send_report.cfg'
 
-def send_report(path, filename):
+def send_report(path, filename, timestamp):
 
     # for i, order in list(enumerate(order_list, 1)):
     #
@@ -220,12 +220,28 @@ def send_report(path, filename):
     # path = os.path.join('data', filename)
     # wb.save(path)
 
+    conf = SendReporConf()
+    addr_from = conf.get('addr_from')
+    addr_to = conf.get('addr_to')
+    addr_cc = conf.get('addr_cc')
+    _host = conf.get('host')
+    _port = conf.get('port')
+    _user = conf.get('user')
+    _pass = conf.get('pass')
+
     print('Отправка отчета...')
     msg = MIMEMultipart('mixed')
     msg['Subject'] = 'Актуальные заявки {}'.format(timestamp.strftime(timestamp_format))
     msg['From'] = addr_from
     msg['To'] = ', '.join(addr_to)
     msg['cc'] = ', '.join(addr_cc)
+
+    part = MIMEText("""Добрый день.
+
+Во вложении находится список актуальных заявок.
+
+Отчет сформирован {}""".format(timestamp.strftime(timestamp_format)))
+    msg.attach(part)
 
     with open(path, 'rb') as fp:
         part = MIMEBase('application', 'vnd.ms-excel')
