@@ -20,7 +20,7 @@ from atmsrv_db.gptyp import OrderState
 orders = actual_ncr()
 print(orders)
 
-table_cre(None, orders)
+# table_cre(None, orders)
 
 # number_list = [
 #     # 'W701165456', 'W612315724', 'W612285187',  'W701175112', 'W701185283', 'W701166406', 'W701136126', 'W701105142',

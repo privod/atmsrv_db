@@ -8,7 +8,10 @@ from email.mime.text import MIMEText
 from smtplib import SMTP
 
 import xlwt
+from xlwt import Worksheet
+from xlwt.Workbook import Workbook
 
+import reporter
 from atmsrv_db.gptyp import from_gpdatetime, OrderState
 from atmsrv_db.orcl import Orcl
 
@@ -43,89 +46,14 @@ _port = 587
 _user = 'testorders@diasoft-service.ru'
 _pass = 'UiGmo0DhTu8h'
 
-
-# class FieldInfo(object):
-#     def __init__(self, title=None):
-#         self.title = title
-
-# class _DomainMetaclass(type):
-#     def __init__(cls, name, bases, attributes):
-#         super().__init__(name, bases, attributes)
-#         print(cls)
-#         print(name)
-#         # print(attributes)
-#         # print(attributes.get('fields'))
-#         for field in attributes.get('fields', []):
-#             print(field)
-
-
-class Field(object):
-    title = None
-
-    def __init__(self, val=None):
-        self.val = val
-
-
-class FieldRef(Field):
-    title = 'Индекс'
-
-
-class FieldDateSent(Field):
-    title = 'Дата отправки письма'
-
-
-class FieldSubject(Field):
-    title = 'Заголовок письма'
-
-
-class FieldBody(Field):
-    title = 'Текст письма'
-
-
-class FieldNumber(Field):
-    title = 'Номер заявки'
-
-
-class FieldState(Field):
-    title = 'Статус'
-
-
-# class Model(object, metaclass=_DomainMetaclass):
-# # class Model(object):
-#
-#     def __init__(self):
-#         # print(self.__class__)
-#         # print(self.__class__.__mro__)
-#         for cls in self.__class__.__mro__:
-#             for name, title in cls.__dict__.get('fields', []):
-#                 # print(name, title)
-#
-#                 self.__dict__[name] = None
-#                 self.__class__.__dict__['{}_title'.format(name)] = title
-#
-#         # print(dir(self))
-#         # print(getattr(self, 'fields'))
-#         pass
-
-
-class Domain(object):
-    def __init__(self, ref):
-        self.ref = FieldRef(ref)
-
-
-class Mail(Domain):
-    def __init__(self, ref, date_sent, subject, body):
-        super().__init__(ref)
-        self.date_sent = FieldDateSent(date_sent)
-        self.subject = FieldSubject(subject)
-        self.body = FieldBody(body)
-
-
-class Order(Domain):
-    def __init__(self, ref, number, state):
-        super().__init__(ref)
-        self.number = FieldNumber(number)
-        self.state = FieldState(state)
+order_header = [
+    'Индекс заявки',
+    'Номер заявки',
+    'Статус',
+    'Дата отправки письма',
+    'Заголовок письма',
+    'Текст письма',
+]
 
 
 def actual_ncr():
@@ -133,106 +61,117 @@ def actual_ncr():
     # db = Orcl(uri="prom_ust_atm/121@fast")
 
     print('Получение списка актуальных заявок...')
-    # order_list = db.exec_in_dict(sqltext_order_list, {})
-    #
-    # for order in order_list:
-    #     mail_list = db.exec_in_dict(sqltext_mail, {'order_number': order['a_number']})
-    #     order['mail_list'] = sorted(mail_list, key=lambda send: send['a_date_sent'])
 
     db.sql_exec(sqltext_order_list, {})
-    orders = [(ref, number, OrderState(state_int)) for ref, number, state_int in db.fetchall()]
+    # orders = [[ref, number, OrderState(state_int)] for ref, number, state_int in db.fetchall()]
 
-def actual_ncr_objects():
-    db = Orcl()
+    orders = []
+    for ref, number, state_int in db.fetchall():
+        state = OrderState(state_int)
 
-    db.sql_exec(sqltext_order_list, {})
-    orders = [Order(ref, number, OrderState(state_int)) for ref, number, state_int in db.fetchall()]
+        db.sql_exec(sqltext_mail, {'ref': ref})
+        mails = [mail for mail in db.fetchall()]
+        mails.sort(key=lambda mail: mail[1])            # Сортировка по дате получения письма
 
-    for order in orders:
-        db.sql_exec(sqltext_mail, {'ref': order.ref.val})
-        mails = [Mail(ref, date_sent, subject, body) for ref, date_sent, subject, body in db.fetchall()]
-        order.mails = sorted(mails, key=lambda mail: mail.date_sent.val)
+        orders.append([ref, number, state, mails])
 
     return orders
 
-
-class Cell(object):
-    def __init__(self, label, style: xlwt.XFStyle()):
-        # self.x = x
-        # self.y = y
-        self.label = label
-        self.style = style
-
-
-class Table(object):
-    def __init__(self, col_beg=0, row_beg=0):
-        self.col_beg = col_beg
-        self.row_beg = row_beg
-        # self.cols = []
-        # self.rows = []
-        self.cells = []
-
-    def row_add(self, cells):
-        self.cells.append([cell for cell in cells])
-
-    def get_header(self):
-        return self.cells[0]
-
-    # def add_cell(self, cell: Cell):
-    #     # col = self.cols.get(cell.x, [])
-    #     # col.append(cell)
-    #     # row = self.rows.get(cell.y, [])
-    #     # row.append(cell)
-    #     self.cells[(cell.x, cell.y)] = cell
-
-
-def table_cre(sheet: xlwt.Worksheet, orders):
-
-    font_title = xlwt.Font()
-    font_title.bold = True
-
-    style_title = xlwt.XFStyle()
-    style_title.font = font_title
-    style_date = xlwt.XFStyle()
-    style_date.num_format_str = 'DD.MM.YYYY HH:MM:SS'
-
-    table = Table()
-
-    fields = orders[0].__dict__.values()
-
-    table.row_add([Cell(field.title, style_title) for field in fields if isinstance(field, Field)])
-    for order in orders:
-        cels = [field.vals for field in orders[0].__dict__.values]
-        mail = order.mails[0]
-        cels.extend([[field.vals for field in mail.__dict__.values]])
-        table.row_add()
+# class Cell(object):
+#     def __init__(self, label, style: xlwt.XFStyle()):
+#         # self.x = x
+#         # self.y = y
+#         self.label = label
+#         self.style = style
+#
+#
+# class Table(object):
+#     def __init__(self, col_beg=0, row_beg=0):
+#         self.col_beg = col_beg
+#         self.row_beg = row_beg
+#         # self.cols = []
+#         # self.rows = []
+#         self.cells = []
+#
+#     def row_add(self, cells):
+#         self.cells.append([cell for cell in cells])
+#
+#     def get_header(self):
+#         return self.cells[0]
+#
+#     # def add_cell(self, cell: Cell):
+#     #     # col = self.cols.get(cell.x, [])
+#     #     # col.append(cell)
+#     #     # row = self.rows.get(cell.y, [])
+#     #     # row.append(cell)
+#     #     self.cells[(cell.x, cell.y)] = cell
 
 
-def report(table):
+# def table_cre(sheet: xlwt.Worksheet, orders):
+#
+#
+#     fields = orders[0].__dict__.values()
+#
+#     table.row_add([Cell(field.title, style_title) for field in fields if isinstance(field, Field)])
+#     for order in orders:
+#         cels = [field.vals for field in orders[0].__dict__.values]
+#         mail = order.mails[0]
+#         cels.extend([[field.vals for field in mail.__dict__.values]])
+#         table.row_add()
+
+
+
+# class StyleDate(xlwt.XFStyle):
+#     def __init__(self):
+#         super().__init__()
+#         self.num_format_str = 'DD.MM.YYYY HH:MM:SS'
+
+
+# class OrderExcel(object):
+#     header = [
+#         ('Номер заявки', 4000),
+#         ('Статус', 4500),
+#         ('Дата отправки письма', 7000),
+#         ('Заголовок письма', 10000),
+#         ('Текст письма', 15000),
+#     ]
+#
+#     def __init__(self, row_beg, col_beg):
+#         super().__init__()
+#         # self.sheet = sheet
+#         self.row_beg = row_beg
+#         self.col_beg = col_beg
+#
+#     def header_write(self, sheet: Worksheet):
+#         style = StyleTitle()
+#
+#         for i, field in enumerate(self.__class__.header):
+#             row = self.row_beg
+#             col = self.col_beg + i
+#             title = field[0]
+#             width = field[1]
+#
+#             sheet.write(row, col, title, style)
+#             sheet.col(col).width = width
+
+
+titles = ['Индекс заявки', 'Номер заявки', 'Статус', 'Дата отправки письма', 'Заголовок письма', 'Текст письма']
+width_list = [4000, 4500, 7000, 10000, 15000]
+
+
+def order_report():
     print('Формирование отчета...')
     timestamp = datetime.now()
 
     wb = xlwt.Workbook()
     sheet = wb.add_sheet('Orders')
 
-    font_title = xlwt.Font()
-    font_title.bold = True
+    stype_title = reporter.StyleTitle()
+    reporter.row_write(sheet, 0, 0, titles, stype_title)
 
-    style_title = xlwt.XFStyle()
-    style_title.font = font_title
-    style_date = xlwt.XFStyle()
-    style_date.num_format_str = 'DD.MM.YYYY HH:MM:SS'
 
-    sheet.write(0, 0, 'Номер заявки', style_title)
-    sheet.col(0).width = 4000
-    sheet.write(0, 1, 'Статус', style_title)
-    sheet.col(1).width = 4500
-    sheet.write(0, 2, 'Дата отправки письма', style_title)
-    sheet.col(2).width = 7000
-    sheet.write(0, 3, 'Заголовок письма', style_title)
-    sheet.col(3).width = 10000
-    sheet.write(0, 4, 'Текст письма', style_title)
-    sheet.col(4).width = 15000
+
+def table(sheet, header):
 
     for i, order in list(enumerate(order_list, 1)):
 
