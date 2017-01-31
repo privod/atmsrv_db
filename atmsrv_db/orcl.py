@@ -5,9 +5,9 @@ import cx_Oracle
 
 
 class Orcl:
-    def __init__(self, uri="privod_ust_atm_new/121@orcl"):
+    def __init__(self, user='privod_ust_atm_new', password='121', dns='orcl'):
         try:
-            self.conn = cx_Oracle.connect(uri)
+            self.conn = cx_Oracle.connect(user, password, dns)
         except cx_Oracle.DatabaseError as info:
             print("DB logon  error:", info)
             exit(0)
