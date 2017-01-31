@@ -78,7 +78,7 @@ def actual_ncr():
 
 def get_actual_ncr_orders():
     db = Orcl()
-    # db = Orcl(uri="prom_ust_atm/121@fast")
+    # db = Orcl(user='prom_ust_atm', password='121', dns='fast')
 
     print('Получение списка актуальных заявок...')
 
