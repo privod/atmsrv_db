@@ -53,6 +53,14 @@ class OrderState(Enum):
         ('without_set_off', 22, 'Решено без выезда'),
     )
 
+class ServiceType(Enum):
+    records = (
+        ('flm', 0, 'FLM'),
+        ('slm_guarantee', 1, "гарантийное"),
+        ('slm_postguarantee', 2, 'постгарантийное'),
+        ('once_only', 3, "платное")
+    )
+
 
 def from_slm_state(val):
     return
