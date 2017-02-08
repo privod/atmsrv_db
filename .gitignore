@@ -10,7 +10,7 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-env/
+env_*/
 build/
 develop-eggs/
 dist/
@@ -98,3 +98,7 @@ ENV/
 Будет удалено atmsrv_db/2.xls
 Будет удалено atmsrv_db/2.xlsx
 Будет удалено atmsrv_db/orcl.py
+
+data/
+*.cmd
+*.cfg
