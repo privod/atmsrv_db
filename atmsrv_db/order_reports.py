@@ -13,6 +13,7 @@ import atmsrv_db.reporter as reporter
 from atmsrv_db.gptyp import from_gpdatetime, OrderState
 from atmsrv_db.orcl import Orcl
 from atmsrv_db.conf import Conf
+from gptyp import ServiceType
 
 sqltext_mail = """
 select m.a_date_sent, m.a_subject, mb.a_body_part from r_send_mail m
@@ -24,7 +25,7 @@ where 1 = 1
 """
 
 sqltext_order_list ="""
-select o.ref, o.a_number, o.slm_state, o.text from r_order o
+select o.ref, o.a_number, o.slm_state, o.date_reg, o.service_type, o.atm_city, o.text from r_order o
 where 1 = 1
   and o.contr_ref = 1000
   and o.SERVICE_TYPE in (1, 2, 3)
@@ -40,6 +41,9 @@ timestamp_format = '%d.%m.%Y %H:%M'
 header = [
     ('Номер заявки', 4000),
     ('Статус', 4500),
+    ('Регистрация', 6000),
+    ('Обслуживание', 4500),
+    ('Город', 4500),
     ('Примечание', 10000),
     ('Дата отправки письма', 6000),
     ('Заголовок письма', 10000),
@@ -87,14 +91,15 @@ def get_actual_ncr_orders():
     # orders = [[ref, number, OrderState(state_int)] for ref, number, state_int in db.fetchall()]
 
     orders = []
-    for ref, number, state_int, text in db.fetchall():
+    for ref, number, state_int, date_reg, service_type_int, city, text in db.fetchall():
         state = OrderState(state_int)
+        service_type = ServiceType(service_type_int)
 
         db.sql_exec(sqltext_mail, {'ref': ref})
         mails = [[from_gpdatetime(date_sent), subject, body.strip()] for date_sent, subject, body in db.fetchall()]
         mails.sort(key=lambda mail: mail[1], reverse=True)            # Сортировка по дате получения письма
 
-        order = [number, state.title, text]
+        order = [number, state.title, from_gpdatetime(date_reg), service_type.title, city, text]
         if len(mails) > 0:
             order.extend(mails[0])
 
