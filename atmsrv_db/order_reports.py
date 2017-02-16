@@ -1,5 +1,5 @@
 import os.path
-from datetime import datetime
+from datetime import datetime, time
 from email import encoders
 from email._header_value_parser import ContentType
 from email.mime.base import MIMEBase
@@ -10,7 +10,7 @@ from smtplib import SMTP
 import xlwt
 
 import atmsrv_db.reporter as reporter
-from atmsrv_db.gptyp import from_gpdatetime, OrderState, ServiceType
+from atmsrv_db.gptyp import from_gpdatetime, OrderState, ServiceType, to_gpdatetime
 from atmsrv_db.orcl import Orcl
 from atmsrv_db.conf import Conf
 
@@ -27,10 +27,10 @@ sqltext_order_list ="""
 select o.ref, o.a_number, o.slm_state, o.date_reg, o.service_type, o.atm_city, o.text from r_order o
 where 1 = 1
   and o.contr_ref = 1000
-  and o.SERVICE_TYPE in (1, 2, 3)
   and (
     o.slm_state in (1, 2, 4, 5, 6, 7, 8, 9, 10, 14, 19, 21) or
-    (o.slm_state in (3, 11, 22) and o.DATE_END between 20161210000000 and 20161210235959)
+    (o.slm_state in (11, 22) and o.DATE_END between :beg and :end) or
+    (o.slm_state = 3 and (select max(h.a_date) from r_history h where h.order_ref = o.ref and h.slm_state = 3) between :beg and :end)
   )
 order by o.DATE_REG desc
 """
@@ -72,21 +72,29 @@ col_beg = 0
 
 def actual_ncr():
 
-    order = get_actual_ncr_orders()
-
     timestamp = datetime.now()
+
+    order = get_actual_ncr_orders(timestamp)
+
     path, filename = order_report(order, timestamp)
 
     send_report(path, filename, timestamp)
 
 
-def get_actual_ncr_orders():
+def get_actual_ncr_orders(timestamp):
     # db = Orcl()
     db = Orcl(user='prom_ust_atm', password='121', dns='fast')
 
     print('Получение списка актуальных заявок...')
 
-    db.sql_exec(sqltext_order_list, {})
+    d = timestamp.date()
+    dt_beg = to_gpdatetime(datetime.combine(d, time()))
+    dt_end = to_gpdatetime(datetime.combine(d, time(23, 59, 59)))
+
+    db.sql_exec(sqltext_order_list, {
+        'beg': dt_beg,
+        'end': dt_end,
+    })
     # orders = [[ref, number, OrderState(state_int)] for ref, number, state_int in db.fetchall()]
 
     orders = []
