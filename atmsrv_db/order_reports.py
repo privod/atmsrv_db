@@ -27,6 +27,7 @@ sqltext_order_list ="""
 select o.ref, o.a_number, o.slm_state, o.date_reg, o.service_type, o.atm_city, o.text from r_order o
 where 1 = 1
   and o.contr_ref = 1000
+  and o.a_number like 'W%'
   and (
     o.slm_state in (1, 2, 4, 5, 6, 7, 8, 9, 10, 14, 19, 21) or
     (o.slm_state in (11, 22) and o.DATE_END between :beg and :end) or
