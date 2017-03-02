@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+import logging
 
 import cx_Oracle
 
@@ -23,10 +24,7 @@ class Orcl:
             else:
                 self.cursor.execute(sql)
         except cx_Oracle.DatabaseError as info:
-            print("SQL execute:", self.cursor.statement)
-            print("Params:", params)
-            print("SQL error:", info)
-            input(" - = ! = - ")
+            logging.error('SQL error: {}\n\tSQL execute: {}\n\tParams: {}'.format(info, self.cursor.statement, params))
 
     def fetchall(self):
         return self.cursor.fetchall()

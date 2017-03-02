@@ -5,9 +5,11 @@ from email._header_value_parser import ContentType
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from logging import exception
 from smtplib import SMTP
 
 import xlwt
+import logging
 
 import atmsrv_db.reporter as reporter
 from atmsrv_db.gptyp import from_gpdatetime, OrderState, ServiceType, to_gpdatetime
@@ -73,20 +75,35 @@ col_beg = 0
 
 def actual_ncr():
 
-    timestamp = datetime.now()
+    try:
+        formatter = logging.Formatter('%(levelname)s %(asctime)s: %(filename)s[LINE:%(lineno)d]: %(message)s')
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.DEBUG)
+        file_handler = logging.FileHandler('log.txt')
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        root_logger.addHandler(console_handler)
 
-    order = get_actual_ncr_orders(timestamp)
+        timestamp = datetime.now()
 
-    path, filename = order_report(order, timestamp)
+        order = get_actual_ncr_orders(timestamp)
 
-    send_report(path, filename, timestamp)
+        path, filename = order_report(order, timestamp)
+
+        send_report(path, filename, timestamp)
+    except Exception as e:
+        logging.exception(e)
+
 
 
 def get_actual_ncr_orders(timestamp):
-    # db = Orcl()
-    db = Orcl(user='prom_ust_atm', password='121', dns='fast')
+    db = Orcl()
+    # db = Orcl(user='prom_ust_atm', password='121', dns='fast')
 
-    print('Получение списка актуальных заявок...')
+    logging.info('Получение списка актуальных заявок...')
 
     d = timestamp.date()
     dt_beg = to_gpdatetime(datetime.combine(d, time()))
@@ -198,7 +215,7 @@ def get_actual_ncr_orders(timestamp):
 
 def order_report(cells, timestamp):
 
-    print('Формирование отчета...')
+    logging.info('Формирование отчета...')
 
     wb = xlwt.Workbook()
     sheet = wb.add_sheet('Orders')
@@ -243,7 +260,7 @@ def send_report(path, filename, timestamp):
     _user = conf.get('user')
     _pass = conf.get('pass')
 
-    print('Отправка отчета...')
+    logging.info('Отправка отчета...')
     msg = MIMEMultipart('mixed')
     msg['Subject'] = 'Актуальные заявки {}'.format(timestamp.strftime(timestamp_format))
     msg['From'] = addr_from
@@ -269,7 +286,7 @@ def send_report(path, filename, timestamp):
         smtp.login(_user, _pass)
         smtp.sendmail(addr_from, addr_to + addr_cc, msg.as_string())
 
-    print('Отчет отправлен.')
+        logging.info('Отчет отправлен.')
 
 
 # def test_objects():
