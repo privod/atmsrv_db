@@ -1,23 +1,22 @@
 from datetime import datetime
 
+from setuptools.command import test
+
 from atmsrv_db.orcl import Orcl
 
 from atmsrv_db.send_mail import ncr_last_by_order
 from atmsrv_db.order_reports import actual_ncr
 from atmsrv_db.gptyp import OrderState
+from atmsrv_db.atm_mode import test
 
-# sqltext = "select ref, city, region from r_city"
-# orcl = Orcl()
-# orcl.sql_exec(sqltext, {})
-# # result = orcl.get_result(('Индекс', 'Город', 'Регион'))
-# result = orcl.get_result()
-# print(result)
 
 # sent_mail()
 
 # test_objects()
 
-actual_ncr()
+# actual_ncr()
+
+test()
 
 # table_cre(None, orders)
 

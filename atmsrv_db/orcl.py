@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 import logging
 
+import os
+os.environ['NLS_LANG'] = 'American_America.AL32UTF8'
+
 import cx_Oracle
 
 
@@ -29,6 +32,9 @@ class Orcl:
     def fetchall(self):
         return self.cursor.fetchall()
 
+    def fetchone(self):
+        return self.cursor.fetchone()
+
     def get_metadata(self):
         return self.cursor.description
 
@@ -49,6 +55,11 @@ class Orcl:
             dicts.append(dict)
         return dicts
 
+    def commit(self):
+        self.conn.commit()
+
+    def rollback(self):
+        self.conn.rollback()
 
 class Result:
     def __init__(self, rows, names, types, titles=None):

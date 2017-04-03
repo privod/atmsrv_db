@@ -15,6 +15,7 @@ import atmsrv_db.reporter as reporter
 from atmsrv_db.gptyp import from_gpdatetime, OrderState, ServiceType, to_gpdatetime
 from atmsrv_db.orcl import Orcl
 from atmsrv_db.conf import Conf
+import atmsrv_db.log
 
 sqltext_mail = """
 select m.a_date_sent, m.a_subject, mb.a_body_part from r_send_mail m
@@ -76,16 +77,17 @@ col_beg = 0
 def actual_ncr():
 
     try:
-        formatter = logging.Formatter('%(levelname)s %(asctime)s: %(filename)s[LINE:%(lineno)d]: %(message)s')
-        root_logger = logging.getLogger()
-        root_logger.setLevel(logging.DEBUG)
-        file_handler = logging.FileHandler('log.txt')
-        file_handler.setLevel(logging.INFO)
-        file_handler.setFormatter(formatter)
-        root_logger.addHandler(file_handler)
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        root_logger.addHandler(console_handler)
+        # formatter = logging.Formatter('%(levelname)s %(asctime)s: %(filename)s[LINE:%(lineno)d]: %(message)s')
+        # root_logger = logging.getLogger()
+        # root_logger.setLevel(logging.DEBUG)
+        # file_handler = logging.FileHandler('log.txt')
+        # file_handler.setLevel(logging.INFO)
+        # file_handler.setFormatter(formatter)
+        # root_logger.addHandler(file_handler)
+        # console_handler = logging.StreamHandler()
+        # console_handler.setFormatter(formatter)
+        # root_logger.addHandler(console_handler
+        atmsrv_db.log.init()
 
         timestamp = datetime.now()
 
